@@ -5,6 +5,7 @@ import org.bukkit.World;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
+import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
@@ -39,6 +40,7 @@ public final class CombatTag extends JavaPlugin implements Listener {
     }
 
 
+    @EventHandler
     public void onCombatEntity(EntityDamageByEntityEvent event, String[] args) {
         if (event.getEntity() instanceof Player) {
             Player defender = (Player) event.getEntity();
@@ -47,11 +49,13 @@ public final class CombatTag extends JavaPlugin implements Listener {
             //Gets Player object defender, Entity object attacker, and World object world
 
 
-            if (attacker instanceof LivingEntity && !(attacker instanceof Player) && world.getName().equals(OPEN_WORLD)) {
+            if (attacker instanceof LivingEntity && !(attacker instanceof Player) && world.getName().equalsIgnoreCase(OPEN_WORLD)) {
 
                 if (!combatTimers.containsKey(defender)) {
                     startCombatTimer(defender);
                     //If the timer hasn't started already, start the timer
+                } else {
+                    getLogger().warning("The combat tag failed to activate!");
                 }
 
                 defender.sendMessage(ChatColor.RED + "You are now in combat! " + ChatColor.LIGHT_PURPLE + "(Entity)");
@@ -118,6 +122,7 @@ public final class CombatTag extends JavaPlugin implements Listener {
 
     }
 
+    @EventHandler
     private void onPlayerQuit(PlayerQuitEvent event) {
         Player player = event.getPlayer();
 

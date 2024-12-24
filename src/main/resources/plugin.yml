@@ -6,3 +6,4 @@ prefix: CombatTag
 load: STARTUP
 authors: [ Fjc ]
 description: A combat timer that disables certain commands/permissions when active.
+
