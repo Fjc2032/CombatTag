@@ -14,14 +14,15 @@ import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
 
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 public final class CombatTag extends JavaPlugin implements Listener {
 
     private static final String OPEN_WORLD = "Open_World";
 
-    private static final Map<Player, Integer> combatTimers = new HashMap<>();
+    private final Map<Player, Integer> combatTimers = new ConcurrentHashMap<>();
 
-    private HashMap<UUID, PermissionAttachment> perms = new HashMap<UUID, PermissionAttachment>();
+    private final Map<UUID, PermissionAttachment> perms = new ConcurrentHashMap<>();
 
     public Player defender;
 
@@ -31,11 +32,33 @@ public final class CombatTag extends JavaPlugin implements Listener {
         this.saveDefaultConfig();
         this.getConfig().set("CombatDuration", 10);
 
+        if (!getConfig().contains("CombatDuration")) {
+            getConfig().set("CombatDuration", 10);
+            saveConfig();
+        }
+
 
     }
 
     @Override
     public void onDisable() {
+        if (combatTimers.containsKey(defender)) {
+            cancelCombatTimer(defender);
+
+            PermissionAttachment dPerms = perms.remove(defender.getUniqueId());
+            if (dPerms != null)
+                defender.removeAttachment(dPerms);
+
+            getLogger().warning("One or more players had a combat timer active. Attempting to stop them now.");
+            try {
+                wait(5000);
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+            getLogger().info("Shutting down CombatTag");
+        } else {
+            getLogger().info("Shutting down CombatTag");
+        }
         // Plugin shutdown logic
     }
 
@@ -71,12 +94,6 @@ public final class CombatTag extends JavaPlugin implements Listener {
 
 
 
-            }
-            if (attacker == null) {
-                return;
-            }
-            if (defender == null) {
-                return;
             } //Null checks, if the player changes dimensions or something.
         }
 
@@ -104,15 +121,12 @@ public final class CombatTag extends JavaPlugin implements Listener {
 
                     defender.sendMessage(ChatColor.BLUE + "You are no longer in combat.");
                     combatTimers.remove(defender);
-                    cancel();
 
-                    PermissionAttachment pperms = perms.get(defender.getUniqueId());
-                    if (pperms != null) {
-                        pperms.setPermission("essentials.back", true);
-                        pperms.setPermission("essentials.warp", true);
-                        pperms.setPermission("essentials.tpa", true);
+                    PermissionAttachment dPerms = perms.remove(defender.getUniqueId());
+                    if (dPerms != null) {
+                        defender.removeAttachment(dPerms);
                     }
-
+                    cancel();
 
                 } else {
                     combatTimers.put(defender, remainingTime - 1);
@@ -128,6 +142,14 @@ public final class CombatTag extends JavaPlugin implements Listener {
 
         if (combatTimers.containsKey(player)) {
             cancelCombatTimer(player);
+
+            player.setHealth(0);
+            getServer().broadcastMessage(player.getName() + " logged out while in combat and has perished.");
+
+            PermissionAttachment dPerms = perms.remove(player.getUniqueId());
+            if (dPerms != null) {
+                player.removeAttachment(dPerms);
+            }
         }
 
     }
