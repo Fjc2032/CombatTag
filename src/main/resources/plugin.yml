@@ -1,0 +1,8 @@
+name: CombatTag
+version: '1.0-beta'
+main: dev.Fjc.combatTag.CombatTag
+api-version: '1.21'
+prefix: CombatTag
+load: STARTUP
+authors: [ Fjc ]
+description: A combat timer that disables certain commands/permissions when active.
