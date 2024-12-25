@@ -1,2 +1,5 @@
 CombatDuration: 10
 # How long the combat timer should be. Type an integer, in seconds.
+
+WorldName: "Open_World"
+# name of the world that will be affected. Type a string.

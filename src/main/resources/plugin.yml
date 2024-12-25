@@ -7,3 +7,8 @@ load: STARTUP
 authors: [ Fjc ]
 description: A combat timer that disables certain commands/permissions when active.
 
+commands:
+  combattag-reload:
+    description: Reloads CombatTag configuration
+    permission: fjc.combattag.reload
+
