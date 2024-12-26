@@ -25,22 +25,29 @@ public final class CombatTag extends JavaPlugin implements Listener {
     //Name of the world that will be used. Pulled from config.yml
 
     private final Map<Player, Integer> combatTimers = new ConcurrentHashMap<>();
+    private final Map<Player, Integer> combatTimers1 = new ConcurrentHashMap<>();
     //Stores timer combatTimers in a HashMap
 
     private final Map<UUID, PermissionAttachment> perms = new ConcurrentHashMap<>();
+    private final Map<UUID, PermissionAttachment> perms1 = new ConcurrentHashMap<>();
     //Stores player permissions in a ConcurrentHashMap
 
     private final Map<Player, BukkitRunnable> combatTasks = new ConcurrentHashMap<>();
+    private final Map<Player, BukkitRunnable> combatTasks1 = new ConcurrentHashMap<>();
     //Stores the BukkitRunnable task in a HashMap (runnable holds timer logic)
 
     public Player defender;
     //Have Player = defender to use as object
+    
+    //defender = entity trigger
+    //defender1 = player trigger
 
     @Override
     public void onEnable() {
         getServer().getPluginManager().registerEvents(this, this);
         this.saveDefaultConfig();
-        this.getConfig().addDefault("CombatDuration", 10);
+        this.getConfig().addDefault("CombatDuration.Entity", 10);
+        this.getConfig().addDefault("CombatDuration.Player", 15);
         this.getConfig().addDefault("WorldName", "Open_World");
         saveConfig();
     }
@@ -57,14 +64,24 @@ public final class CombatTag extends JavaPlugin implements Listener {
 
             getLogger().warning("One or more players has a combat timer active. Attempting to stop them now.");
 
-            cancelCombatTimer(defender);
+            if (combatTimers != null) {
+            cancelCombatTimer(defender); } else {
+                getLogger().severe("A fatal error has occurred. Skipping...");
+                getLogger().info("Shutting down CombatTag");
+                throw new NullPointerException();
+            }
 
             PermissionAttachment dPerms = perms.remove(defender.getUniqueId());
-            if (dPerms != null)
-                defender.removeAttachment(dPerms);
+            removeAttachment(defender);
+            if (dPerms != null) {
+                defender.removeAttachment(dPerms); } else {
+                getLogger().severe("A fatal error has occurred. Skipping...");
+                throw new RuntimeException();
+            }
 
             getLogger().info("Shutting down CombatTag");
         } else {
+            getLogger().warning("Something went wrong while trying to grab a variable. Skipping...");
             getLogger().info("Shutting down CombatTag");
         }
     }
@@ -94,19 +111,42 @@ public final class CombatTag extends JavaPlugin implements Listener {
                 }
                 startCombatTimer(defender);
 
-
-                PermissionAttachment attachment = defender.addAttachment(this);
-                perms.put(defender.getUniqueId(), attachment);
-
-                perms.get(defender.getUniqueId()).unsetPermission("essentials.back");
-                perms.get(defender.getUniqueId()).unsetPermission("essentials.warp");
-                perms.get(defender.getUniqueId()).unsetPermission("essentials.tpa");
+                addAttachment(defender, defender);
             }
         }
     }
+    @EventHandler
+    public void onCombatPlayer(EntityDamageByEntityEvent event) {
+        if (event.getEntity() instanceof Player) {
+            Player defender1 = (Player) event.getEntity();
+            Entity attacker = event.getDamager();
+            World world = defender1.getWorld();
+
+
+            if ((attacker instanceof Player) && world.getName().equalsIgnoreCase(OPEN_WORLD)) {
+                if (combatTimers1.containsKey(defender1)) {
+
+                    BukkitRunnable existingTask = combatTasks1.get(defender1);
+                    if (existingTask != null) {
+                        existingTask.cancel();
+                    }
+                } else {
+                    defender1.sendMessage(ChatColor.RED + "You are now in combat! " + ChatColor.DARK_RED + "(Player)");
+                }
+
+                startCombatTimer1(defender1);
+
+                addAttachment(defender1, defender1);
+
+            }
+
+
+        }
+    }
+
     private void startCombatTimer(Player defender) {
-        //Logic for timer
-        int combatDuration = (int) this.getConfig().get("CombatDuration");
+        //Logic for timer - entity
+        int combatDuration = (int) this.getConfig().get("CombatDuration.Entity");
 
         combatTimers.put(defender, combatDuration);
 
@@ -140,6 +180,30 @@ public final class CombatTag extends JavaPlugin implements Listener {
         combatTasks.put(defender, task);
         task.runTaskTimer(this, 0, 20);
     }
+    private void startCombatTimer1(Player defender1) {
+        //Logic for timer - player
+        int combatDuration = (int) this.getConfig().get("CombatDuration.Player");
+        
+        combatTimers1.put(defender1, combatDuration);
+        
+        BukkitRunnable task = new BukkitRunnable() {
+            @Override
+            public void run() {
+                if (!combatTimers1.containsKey(defender1)) {
+                    cancel();
+                    return;
+                }
+                int remainingTime = combatTimers1.get(defender1);
+                
+                if (remainingTime <= 0) {
+                    defender1.sendMessage(ChatColor.BLUE + "You are no longer in combat.");
+                    combatTimers1.remove(defender1);
+                }
+            }
+        };
+        combatTasks1.put(defender1, task);
+        task.runTaskTimer(this, 0, 20);
+    }
 
 
     //If the player quits while the timer is running, kill the player
@@ -149,7 +213,7 @@ public final class CombatTag extends JavaPlugin implements Listener {
 
         if (combatTimers.containsKey(player)) {
             cancelCombatTimer(player);
-            removePermissions(player);
+            removeAttachment(player);
 
             player.setHealth(0);
             getServer().broadcastMessage(player.getName() + " logged out while in combat and has perished.");
@@ -165,7 +229,7 @@ public final class CombatTag extends JavaPlugin implements Listener {
 
         if (combatTimers.containsKey(player)) {
             cancelCombatTimer(player);
-            removePermissions(player);
+            removeAttachment(player);
         }
     }
 
@@ -180,10 +244,34 @@ public final class CombatTag extends JavaPlugin implements Listener {
     }
 
     //Logic to remove permission attachments (does not remove permissions from the player!)
-    private void removePermissions(Player player) {
+    private void removeAttachment(Player player) {
         PermissionAttachment dPerms = perms.remove(player.getUniqueId());
         if (dPerms != null) {
             player.removeAttachment(dPerms);
+        }
+    }
+
+    //Logic to add permission attachments (this removes the permissions. Wacky, right?)
+    private void addAttachment(Player defender, Player defender1) {
+        PermissionAttachment attachment = defender.addAttachment(this);
+
+        if (defender != null) {
+            perms.put(defender.getUniqueId(), attachment);
+
+            perms.get(defender.getUniqueId()).unsetPermission("essentials.back");
+            perms.get(defender.getUniqueId()).unsetPermission("essentials.warp");
+            perms.get(defender.getUniqueId()).unsetPermission("essentials.tpa");
+        } else {
+            return;
+        }
+        PermissionAttachment attachment1 = defender1.addAttachment(this);
+
+        if (defender1 != null) {
+            perms1.put(defender1.getUniqueId(), attachment1);
+
+            perms1.get(defender1.getUniqueId()).unsetPermission("essentials.back");
+            perms1.get(defender1.getUniqueId()).unsetPermission("essentials.warp");
+            perms1.get(defender1.getUniqueId()).unsetPermission("essentials.tpa");
         }
     }
 
