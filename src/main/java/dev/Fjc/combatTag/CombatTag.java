@@ -48,7 +48,7 @@ public final class CombatTag extends JavaPlugin implements Listener {
 
         this.getConfig().set("CombatDuration.Entity", 10);
         this.getConfig().set("CombatDuration.Player", 15);
-        this.getConfig().set("WorldName", "world"
+        this.getConfig().set("WorldName", "world");
         
         this.getConfig().addDefault("CombatDuration.Entity", 10);
         this.getConfig().addDefault("CombatDuration.Player", 15);
