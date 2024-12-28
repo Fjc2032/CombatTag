@@ -1,5 +1,7 @@
-CombatDuration: 10
-# How long the combat timer should be. Type an integer, in seconds.
+CombatDuration:
+  Entity: 10
+  Player: 15
+  # Duration of the combat timer. Separate for entities and players. Type an integer.
 
 WorldName: "Open_World"
 # name of the world that will be affected. Type a string.

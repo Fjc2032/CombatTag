@@ -45,11 +45,11 @@ public final class CombatTag extends JavaPlugin implements Listener {
     @Override
     public void onEnable() {
         getServer().getPluginManager().registerEvents(this, this);
-        this.saveDefaultConfig();
         this.getConfig().addDefault("CombatDuration.Entity", 10);
         this.getConfig().addDefault("CombatDuration.Player", 15);
         this.getConfig().addDefault("WorldName", "Open_World");
         saveConfig();
+        reloadConfig();
     }
 
     @Override
@@ -284,6 +284,7 @@ public final class CombatTag extends JavaPlugin implements Listener {
             if (!player.hasPermission("fjc.combattag.reload")) {
                 return true;
             } else {
+                saveConfig();
                 reloadConfig();
                 player.sendMessage(ChatColor.BLUE + "Configuration reloaded");
             }
