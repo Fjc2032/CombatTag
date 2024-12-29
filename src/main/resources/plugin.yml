@@ -7,6 +7,9 @@ load: STARTUP
 authors: [ Fjc ]
 description: A combat timer that disables certain commands/permissions when active.
 
+softdepend:
+  - Essentials
+
 commands:
   combattag-reload:
     description: Reloads CombatTag configuration

@@ -4,4 +4,11 @@ CombatDuration:
   # Duration of the combat timer. Separate for entities and players. Type an integer.
 
 WorldName: "Open_World"
-# name of the world that will be affected. Type a string.
+# Name of the world that will be affected. Type a string.
+
+Permission:
+  Remove:
+    - "essentials.tpa"
+    - "essentials.back"
+# Permissions that will be removed when the player enters combat. Type an array of strings. Replace with [] if
+# if you are not using any permissions.
