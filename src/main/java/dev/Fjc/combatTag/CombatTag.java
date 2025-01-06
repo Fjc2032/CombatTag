@@ -1,5 +1,7 @@
 package dev.Fjc.combatTag;
 
+import dev.Fjc.combatTag.cmd.Debug;
+import dev.Fjc.combatTag.cmd.Reload;
 import org.bukkit.ChatColor;
 import org.bukkit.World;
 import org.bukkit.command.Command;
@@ -24,13 +26,14 @@ import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
-public final class CombatTag extends JavaPlugin implements Listener {
+
+public class CombatTag extends JavaPlugin implements Listener {
 
     private final String OPEN_WORLD = (String) this.getConfig().get("WorldName");
     //Name of the world that will be used. Pulled from config.yml
 
-    private final Map<Player, Integer> combatTimers = new ConcurrentHashMap<>();
-    private final Map<Player, Integer> combatTimers1 = new ConcurrentHashMap<>();
+    public final Map<Player, Integer> combatTimers = new ConcurrentHashMap<>();
+    public final Map<Player, Integer> combatTimers1 = new ConcurrentHashMap<>();
     //Stores timer combatTimers in a HashMap
 
     private final Map<UUID, PermissionAttachment> perms = new ConcurrentHashMap<>();
@@ -42,10 +45,13 @@ public final class CombatTag extends JavaPlugin implements Listener {
 
     //Stores the BukkitRunnable task in a HashMap (runnable holds timer logic)
 
-    private List<String> permissionList = new ArrayList<>();
+    public List<String> permissionList = new ArrayList<>();
 
     public Player defender;
+    public Player defender1;
+    public Player attacker;
     //Have Player = defender to use as object
+
 
     //defender = entity trigger
     //defender1 = player trigger
@@ -53,6 +59,9 @@ public final class CombatTag extends JavaPlugin implements Listener {
     @Override
     public void onEnable() {
         getServer().getPluginManager().registerEvents(this, this);
+
+        getCommand("combattag-debug").setExecutor(new Debug());
+        getCommand("combattag-reload").setExecutor(new Reload());
 
         getLogger().info("Loading configuration...");
 
@@ -151,7 +160,7 @@ public final class CombatTag extends JavaPlugin implements Listener {
 
 
             if ((attacker instanceof Player) && world.getName().equalsIgnoreCase(OPEN_WORLD)) {
-                if (combatTimers1.containsKey(defender1)) {
+                if (combatTimers1.containsKey(defender1) || (combatTimers1.containsKey(attacker))) {
 
                     BukkitRunnable existingTask = combatTasks1.get(defender1);
                     if (existingTask != null) {
@@ -161,7 +170,7 @@ public final class CombatTag extends JavaPlugin implements Listener {
                     defender1.sendMessage(ChatColor.RED + "You are now in combat! " + ChatColor.DARK_RED + "(Player)");
                 }
 
-                startCombatTimer1(defender1);
+                startCombatTimer1(defender1, (Player) attacker);
 
                 addAttachment(defender1, defender1);
 
@@ -171,7 +180,7 @@ public final class CombatTag extends JavaPlugin implements Listener {
         }
     }
 
-    private void startCombatTimer(Player defender) {
+    public void startCombatTimer(Player defender) {
         //Logic for timer - entity
         int combatDuration = (int) this.getConfig().get("CombatDuration.Entity");
 
@@ -208,28 +217,43 @@ public final class CombatTag extends JavaPlugin implements Listener {
         task.runTaskTimer(this, 0, 20);
     }
 
-    private void startCombatTimer1(Player defender1) {
-        //Logic for timer - player
+    public void startCombatTimer1(Player defender1, Player attacker) {
+        //Logic for timer - player & attacker (attacker must be a player)
         int combatDuration = (int) this.getConfig().get("CombatDuration.Player");
 
         combatTimers1.put(defender1, combatDuration);
+        combatTimers1.put(attacker, combatDuration);
 
         BukkitRunnable task = new BukkitRunnable() {
             @Override
             public void run() {
-                if (!combatTimers1.containsKey(defender1)) {
+                if (!combatTimers1.containsKey(defender1) && (!combatTimers1.containsKey(attacker))) {
                     cancel();
                     return;
                 }
                 int remainingTime = combatTimers1.get(defender1);
+                int remainingTimerAttacker = combatTimers1.get(attacker);
 
                 if (remainingTime <= 0) {
                     defender1.sendMessage(ChatColor.BLUE + "You are no longer in combat.");
                     combatTimers1.remove(defender1);
+                    cancel();
+                } else {
+                    combatTimers1.put(defender1, remainingTime - 1);
+                }
+                if (remainingTimerAttacker <= 0) {
+                    attacker.sendMessage(ChatColor.BLUE + "You are no longer in combat.");
+                    combatTimers1.remove(attacker);
+                    cancel();
+                } else {
+                    combatTimers1.put(attacker, remainingTimerAttacker - 1);
                 }
             }
         };
         combatTasks1.put(defender1, task);
+        task.runTaskTimer(this, 0, 20);
+
+        combatTimers1.put(attacker, task.getTaskId());
         task.runTaskTimer(this, 0, 20);
     }
 
@@ -289,8 +313,6 @@ public final class CombatTag extends JavaPlugin implements Listener {
             for (String permission : permissionList) {
                 perms.get(defender.getUniqueId()).unsetPermission(permission);
             }
-        } else {
-            return;
         }
         PermissionAttachment attachment1 = defender1.addAttachment(this);
 
@@ -348,6 +370,10 @@ public final class CombatTag extends JavaPlugin implements Listener {
         }
     }
 }
+
+/*Current status: Trying to have the combat timer also apply to the Player attacker object, instead of just the player
+being attacked.
+ */
 
 
 
